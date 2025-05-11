@@ -1,7 +1,7 @@
 echo "Инициализация кластера MongoDB начата"
 
 echo "Инициализация конфигцрации"
-docker exec -i configSrv1 mongosh --port 27017 <<EOF
+docker compose exec -T  configSrv1 mongosh --port 27017  --quiet <<EOF
 rs.initiate({
   _id: "configReplSet",
   configsvr: true,
@@ -16,7 +16,7 @@ EOF
 sleep 5
 
 echo "Инициализация шарда 1"
-docker exec -i shard1-master mongosh --port 27021 <<EOF
+docker compose exec -T  shard1-master mongosh --port 27021  --quiet <<EOF
 rs.initiate({
   _id: "shard1",
   members: [
@@ -29,7 +29,7 @@ rs.initiate({
 EOF
 
 echo "Инициализация шарда 2"
-docker exec -i shard2-master mongosh --port 27025 <<EOF
+docker compose exec -T  shard2-master mongosh --port 27025  --quiet <<EOF
 rs.initiate({
   _id: "shard2",
   members: [
@@ -41,23 +41,20 @@ rs.initiate({
 });
 EOF
 
-sleep 5
+sleep 10
 
 echo "Наполнение БД"
-docker exec -it mongos_router mongosh --port 27020 <<EOF
+docker compose exec -T mongos_router mongosh --port 27020  --quiet <<EOF
 sh.addShard("shard1/shard1-master:27021,shard1-replica1:27022,shard1-replica2:27023,shard1-replica3:27024");
 sh.addShard("shard2/shard2-master:27025,shard2-replica1:27026,shard2-replica2:27027,shard2-replica3:27028");
 
 sh.enableSharding("somedb");
 sh.shardCollection("somedb.helloDoc", { "name" : "hashed" });
 
-use somedb;
+use somedb
 for (var i = 0; i < 1000; i++) {
   db.helloDoc.insert({ age: i, name: "ly" + i });
 }
-
-print(helloDoc: " + db.helloDoc.countDocuments());
-exit();
 EOF
 
 echo "Все иницициализации и настройки завершены"
